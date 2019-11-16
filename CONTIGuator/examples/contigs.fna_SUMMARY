@@ -1,0 +1,10 @@
+Target genome: CONTIGuator/examples/contigs.fna
+
+--------------SCAFFOLDS---------------
+
+Number of scaffolds: 1448 (singletons = 1446, multi-contig scaffold = 2) 
+from 1539 initial fragments.
+Total length of the jointed fragments: 3303850
+Computing N50 on 1448 sequences.
+N50: 2094133.0
+----------------------

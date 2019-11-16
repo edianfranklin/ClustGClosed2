@@ -1,0 +1,111 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use Getopt::Long qw(:config posix_default no_ignore_case);
+use FindBin qw($Bin);
+
+my $target_scaf_file = '';     # -t
+my $query_contig_file = '';    # -q
+my $align_file = '';            # -a
+my $align_file_Q = '';          # -aq
+my $query_index = '';          # -qi
+my @read_files = ();        # -r
+my $read_format = 'fastq';  # -f
+my $base_call_type = 'auto';    # -bq
+my $read_length = 0;        # -l
+my $insert_size = 400;      # -i
+my $SD_insert = 40;         # -d
+my @sam_target_align_file = (); # -st
+my @sam_query_align_file = ();  # -sq
+my $sam_dir = '';           # -sd
+my $out_prefix = '';        # -p
+my $min_match_length = 300;  # -mm
+my $min_match_len_local = 20; # -ml
+my $min_identity = 99;      # -mi
+my $min_gap_size = 1;       # -mg
+my $max_indel_size = 70;     # -is
+my $min_nucmer_match = 'auto';   # -nl
+my $min_subcon_size = 100;  #
+my $max_query_singletone_cov = 60;  # -qsc
+my $adjust_score = 0;       # -as
+my $extend = 0;             # -et
+my $LR = 0;                 # -LR
+my $LR_coverage = 'auto';   # -lc
+my $min_qalign_num = 1;     # -mq
+my $iteration = 3;          # -it
+my $connect_subcon = 0;     # -c
+my $heterozygosity = 0;     # -ht
+my $thread_num = 5;         # -n
+my $thread_connect = 0;     # -nc
+my $split_target = 0;       # -split
+my $help;                   # -h
+my $blast = 0;
+
+my $arg = join (' ', @ARGV);
+
+GetOptions(
+    'target_scaf|t=s' => \$target_scaf_file,
+    'query_seq|q=s' => \$query_contig_file,
+    'align_file|a=s' => \$align_file,
+    'read_file|r=s{,}' => \@read_files,
+    'query_index|qi=s' => \$query_index,
+    'read_format|f' => \$read_format,
+    'base_qual|bq=s' => \$base_call_type,
+    'read_len|l=i' => \$read_length,
+    'insert|i=i' => \$insert_size,
+    'sd_insert|d=i' => \$SD_insert,
+    'sam_talign|st=s{,}' => \@sam_target_align_file,
+    'sam_qalign|sq=s{,}' => \@sam_query_align_file,
+    'sam_dir|sd=s' => \$sam_dir,
+    'prefix_out|p=s' => \$out_prefix,
+    'min_match_len|mm=i' => \$min_match_length,
+    'min_len_local|ml=i' => \$min_match_len_local,
+    'min_identity|mi=i' => \$min_identity,
+    'min_subcon|ms=i' => \$min_subcon_size,
+    'min_gap_size|mg=i' => \$min_gap_size,
+    'max_indel|is' => \$max_indel_size,
+    'max_qscov|qsc=i' => \$max_query_singletone_cov,
+    'nuc_len|nl=i' => \$min_nucmer_match,
+    'ad_score|as=f' => \$adjust_score,
+    'conect_subcon|c' => \$connect_subcon,
+    'extend|et' => \$extend,
+    'long_read|LR|lr' => \$LR,
+    'lr_cov|lc=i' => \$LR_coverage,
+    'min_qalign|mq=i' => \$min_qalign_num,
+    'iterate|it=i' => \$iteration,
+    'alignq|aq=s' => \$align_file_Q,
+    'hetero|ht' => \$heterozygosity,
+    'thread|n=i' => \$thread_num,
+    'thread_connect|nc=i' => \$thread_connect,
+    'split' => \$split_target,
+    'help|h' => \$help,
+    'blast|b' => \$blast
+);
+
+if ($split_target == 1){
+    system ("$Bin/split_scaffolds_to_subcontigs.pl -t $target_scaf_file -ms $min_subcon_size -mg $min_gap_size -p $out_prefix");
+}
+elsif (($blast == 0) and ($LR == 0)){
+    system ("$Bin/gmcloser-nucmer.pl $arg");
+}
+elsif (($blast == 1) and ($LR == 0)){
+    system ("$Bin/gmcloser-blast.pl $arg");
+}
+elsif ($LR == 1){
+    die "--target_scaf option is not specied: $!\n" if ($target_scaf_file eq '');
+    die "--query_contig option is not specied: $!\n" if ($query_contig_file eq '');
+    die "--prefix_out option is not specied: $!\n" if ($out_prefix eq '');
+    die "The string specified with --prefix_out option must not contain directory names but only a file prefix name: $!\n" if ($out_prefix =~ /\//);
+    die "--read_len option is not specied: $!\n" if ($read_length <= 0) and (@read_files > 0);
+    print STDERR "Alignments with query long reads was performed with BLAST\n" if ($blast == 0);
+    if ($iteration == 1){
+        system ("$Bin/gmcloser-blast-LR-MT.pl $arg --ite_num $iteration");
+    }
+    else{
+        for (my $i = 1; $i <= $iteration; $i++){
+            my $return = system ("$Bin/gmcloser-blast-LR-MT.pl $arg --ite_num $i");
+            last if ($return != 0);
+        }
+    }
+}
+

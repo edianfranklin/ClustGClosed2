@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use Getopt::Long;
+use Pod::Usage;
+use FindBin qw($Bin);
+use threads;
+
+my $scaf_file = '';
+my $ref_file = '';
+my $min_identity = 97;
+my $min_coverage = 99;
+my $min_align_len = 200;
+my $min_subcon_len = 200;
+my $min_gap_len = 1;
+my $max_gap_len = 50000;
+my $max_indel_size = 100;
+my $prefix_out = 'out';
+my $error_correct = 0;
+my $min_nucmer_match = 30;
+my $thread = 1;
+my $help;
+
+my $command = '' if (@ARGV == 0);
+$command = shift @ARGV if (@ARGV > 0);
+my $options = join (' ', @ARGV);
+
+GetOptions(
+    'query|q=s' => \$scaf_file,
+    'ref|r=s' => \$ref_file,
+    'min_id|mi=i' => \$min_identity,
+    'min_cov|mc=i' => \$min_coverage,
+    'min_align|ma=i' => \$min_align_len,
+    'min_len|ml=i' => \$min_subcon_len,
+    'min_gap|g=i' => \$min_gap_len,
+    'max_gap|mg=i' => \$max_gap_len,
+    'max_indel|is=i' => \$max_indel_size,
+    'prefix|p=s' => \$prefix_out,
+    'enable_out|e' => \$error_correct,
+    'nuc_len|l' => \$min_nucmer_match,
+    'thread|n=i' => \$thread,
+    'help' => \$help
+) or pod2usage(-verbose => 0);
+
+pod2usage(-verbose => 0) if $command eq '';
+
+=head1 SYNOPSIS
+
+  GMvalue ver. 1.3
+  
+  Usage: gmvalue [contig|subcon|scaf] [options]
+  (see the details of options for each command by e.g., gmval contig -h)
+   contig     find misassemblies in contigs and/or output an error-free contig set where misassembled contigs are corrected
+   subcon     find misassemblies in (sub)contigs that were split at gaps in scaffolds and/or output an error-free subcontig set
+   scaf       find misassemblies (mislinks between contigs and misassemblies within contigs) in scaffilds and/or output an error-free scaffold set
+   
+=cut
+
+if (($command ne 'contig') and ($command ne 'subcon') and ($command ne 'scaf')){
+    pod2usage(-verbose => 0) if $command eq '--help' or $command eq '-h';
+    die "Command must be specified with contig, subcon, or scaf after gmvalue: $!\n";
+}
+
+if ($command eq 'contig'){
+    system ("$Bin/Utility_gmvalue/Nucmer_contig_validate.pl $options");
+}
+elsif ($command eq 'subcon'){
+    system ("$Bin/Utility_gmvalue/Nucmer_subcontig_validate.pl $options");
+}
+elsif ($command eq 'scaf'){
+    system ("$Bin/Utility_gmvalue/Nucmer_scaf_validate.pl $options");
+}
